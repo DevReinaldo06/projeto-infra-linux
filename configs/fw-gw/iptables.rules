@@ -1,0 +1,60 @@
+*nat
+:PREROUTING ACCEPT [0:0]
+:INPUT ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+
+# R1: DNAT da WAN (enp0s3) para o servidor web na DMZ (portas 80 e 443)
+-A PREROUTING -i enp0s3 -p tcp --dport 80 -j DNAT --to-destination 10.0.1.10:80
+-A PREROUTING -i enp0s3 -p tcp --dport 443 -j DNAT --to-destination 10.0.1.10:443
+
+# R8/R9: Mascaramento para saída na internet (WAN)
+-A POSTROUTING -o enp0s3 -j MASQUERADE
+
+COMMIT
+
+*filter
+:INPUT DROP [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT ACCEPT [0:0]
+
+# Chains personalizadas
+:PROVISION - [0:0]
+
+# Regras globais de conexões estabelecidas
+-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+
+# Loopback liberado
+-A INPUT -i lo -j ACCEPT
+-A FORWARD -i lo -j ACCEPT
+
+# R4: Admin-lan (10.0.2.50) acessa SSH (porta 22) em todas as zonas e no próprio fw-gw
+-A INPUT -s 10.0.2.50 -p tcp --dport 22 -j ACCEPT
+-A FORWARD -s 10.0.2.50 -p tcp --dport 22 -j ACCEPT
+
+# R2: web-dmz (10.0.1.10) para db-zone (10.0.3.10) na porta 5432 (PostgreSQL) - DEVE VIR ANTES DA R5
+-A FORWARD -s 10.0.1.10 -d 10.0.3.10 -p tcp --dport 5432 -j ACCEPT
+
+# R5: Bloqueio com LOG para o restante do tráfego indesejado direcionado à DB Zone (10.0.3.0/24)
+-A FORWARD -d 10.0.3.0/24 -m limit --limit 5/min -j LOG --log-prefix "R5-DB-DROP: "
+-A FORWARD -d 10.0.3.0/24 -j DROP
+
+# R3: Regra de host (documentada no gateway, aplicada na file-lan para portas 139/445 da LAN)
+# R6: db-zone (10.0.3.10) para file-lan (10.0.2.10) na porta 445
+-A FORWARD -s 10.0.3.10 -d 10.0.2.10 -p tcp --dport 445 -j ACCEPT
+
+# R7: DNS (53) de todas as zonas para o fw-gw e DHCP (67/68) na LAN (enp0s9)
+-A INPUT -p udp --dport 53 -j ACCEPT
+-A INPUT -p tcp --dport 53 -j ACCEPT
+-A INPUT -i enp0s9 -p udp --dport 67:68 -j ACCEPT
+
+# R9: LAN (enp0s9) para a WAN (enp0s3) liberando HTTP, HTTPS e DNS
+-A FORWARD -i enp0s9 -o enp0s3 -p tcp -m multiport --dports 80,443 -j ACCEPT
+-A FORWARD -i enp0s9 -o enp0s3 -p udp --dport 53 -j ACCEPT
+-A FORWARD -i enp0s9 -o enp0s3 -p tcp --dport 53 -j ACCEPT
+
+# Chain PROVISION (para a janela de instalação da regra R8)
+-A FORWARD -j PROVISION
+
+COMMIT
