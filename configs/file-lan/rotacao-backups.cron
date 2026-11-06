@@ -1,0 +1,10 @@
+# /etc/cron.d/rotacao-backups
+# Roda a rotação dos backups todo dia às 03:00, depois do backup das 02:00.
+# Em /etc/cron.d o usuário (root) vem antes do comando.
+# Entrega: configs/file-lan/rotacao-backups.cron
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# min hora dia mês dia-da-semana  usuário  comando
+0 3 * * * root /usr/local/bin/rotacao_backups.sh >> /var/log/rotacao_backups.cron.log 2>&1
