@@ -1,0 +1,9 @@
+/var/log/backup-postgres/backup.log {
+    weekly
+    rotate 4
+    compress
+    missingok
+    notifempty
+    su postgres postgres
+    create 600 postgres postgres
+}
