@@ -47,7 +47,7 @@ COMMIT
 -A FORWARD -i enp0s3 -o enp0s10 -m limit --limit 5/min -j LOG --log-prefix "R5-DB-DROP: "
 -A FORWARD -i enp0s3 -o enp0s10 -m comment --comment "R5_wan_db_drop" -j DROP
 # R8 - Janela de instalação: chain PROVISION
--A FORWARD -i enp0s9 -o enp0s3 -j PROVISION
+-A FORWARD -i enp0s8 -o enp0s3 -j PROVISION
 -A FORWARD -i enp0s10 -o enp0s3 -j PROVISION
 # R9 - LAN para a internet
 -A FORWARD -i enp0s9 -o enp0s3 -p tcp -m multiport --dports 80,443,53 -m comment --comment "R9_lan_net_tcp" -j ACCEPT
