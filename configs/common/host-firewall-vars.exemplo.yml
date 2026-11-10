@@ -1,0 +1,15 @@
+# ---- web-dmz: 80 e 443 de qualquer origem ----
+# A API (8000) escuta so em 127.0.0.1, entra pelo loopback e nao precisa de regra.
+servicos:
+  - { nome: http,  porta: 80 }
+  - { nome: https, porta: 443 }
+
+# ---- db-zone: 5432 somente do web-dmz (R2) ----
+# servicos:
+#   - { nome: postgres, porta: 5432, origem: 10.0.1.10/32 }
+
+# ---- file-lan: Samba da LAN (R3) e backup do db-zone (R6) ----
+# servicos:
+#   - { nome: smb139,    porta: 139, origem: 10.0.2.0/24 }
+#   - { nome: smb445,    porta: 445, origem: 10.0.2.0/24 }
+#   - { nome: smb445_db, porta: 445, origem: 10.0.3.10/32 }
