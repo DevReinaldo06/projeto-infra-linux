@@ -22,7 +22,7 @@ set -euo pipefail
 
 # --- Configuração ----------------------------------------------------
 PASTA="/compartilhado/backups"
-PADRAO="appdb_*.tar.gz"
+PADRAO="appdb[_-]*.tar.gz"
 DIAS=7
 MINIMO=3
 LOG="/var/log/rotacao_backups.log"
