@@ -3,58 +3,53 @@
 :INPUT ACCEPT [0:0]
 :OUTPUT ACCEPT [0:0]
 :POSTROUTING ACCEPT [0:0]
-
-# R1: DNAT da WAN (enp0s3) para o servidor web na DMZ (portas 80 e 443)
--A PREROUTING -i enp0s3 -p tcp --dport 80 -j DNAT --to-destination 10.0.1.10:80
--A PREROUTING -i enp0s3 -p tcp --dport 443 -j DNAT --to-destination 10.0.1.10:443
-
-# R8/R9: Mascaramento para saída na internet (WAN)
--A POSTROUTING -o enp0s3 -j MASQUERADE
-
+# R1 - DNAT: WAN (enp0s3) 80/443 vira web-dmz 10.0.1.10
+-A PREROUTING -i enp0s3 -p tcp --dport 80 -m comment --comment "R1_dnat_80" -j DNAT --to-destination 10.0.1.10:80
+-A PREROUTING -i enp0s3 -p tcp --dport 443 -m comment --comment "R1_dnat_443" -j DNAT --to-destination 10.0.1.10:443
+# R8/R9 - Quem sai pela WAN usa o IP da WAN (MASQUERADE)
+-A POSTROUTING -o enp0s3 -m comment --comment "R8_R9_masq" -j MASQUERADE
 COMMIT
 
 *filter
 :INPUT DROP [0:0]
 :FORWARD DROP [0:0]
 :OUTPUT ACCEPT [0:0]
-
-# Chains personalizadas
 :PROVISION - [0:0]
 
-# Regras globais de conexões estabelecidas
--A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
--A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-
-# Loopback liberado
+# INPUT: tráfego destinado ao próprio fw-gw
 -A INPUT -i lo -j ACCEPT
--A FORWARD -i lo -j ACCEPT
+-A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -m comment --comment "R0_input_est" -j ACCEPT
+# R4 - SSH do admin-lan (10.0.2.50) no fw-gw (vindo pela LAN - enp0s9)
+-A INPUT -i enp0s9 -s 10.0.2.50/32 -p tcp --dport 22 -m comment --comment "R4_ssh_fw" -j ACCEPT
+# R7 - DNS das três zonas
+-A INPUT -i enp0s8 -s 10.0.1.0/24 -p udp --dport 53 -m comment --comment "R7_dns_dmz_udp" -j ACCEPT
+-A INPUT -i enp0s8 -s 10.0.1.0/24 -p tcp --dport 53 -m comment --comment "R7_dns_dmz_tcp" -j ACCEPT
+-A INPUT -i enp0s9 -s 10.0.2.0/24 -p udp --dport 53 -m comment --comment "R7_dns_lan_udp" -j ACCEPT
+-A INPUT -i enp0s9 -s 10.0.2.0/24 -p tcp --dport 53 -m comment --comment "R7_dns_lan_tcp" -j ACCEPT
+-A INPUT -i enp0s10 -s 10.0.3.0/24 -p udp --dport 53 -m comment --comment "R7_dns_db_udp" -j ACCEPT
+-A INPUT -i enp0s10 -s 10.0.3.0/24 -p tcp --dport 53 -m comment --comment "R7_dns_db_tcp" -j ACCEPT
+# R7 - DHCP somente na LAN (enp0s9)
+-A INPUT -i enp0s9 -p udp --sport 68 --dport 67 -m comment --comment "R7_dhcp" -j ACCEPT
 
-# R4: Admin-lan (10.0.2.50) acessa SSH (porta 22) em todas as zonas e no próprio fw-gw
--A INPUT -s 10.0.2.50 -p tcp --dport 22 -j ACCEPT
--A FORWARD -s 10.0.2.50 -p tcp --dport 22 -j ACCEPT
-
-# R2: web-dmz (10.0.1.10) para db-zone (10.0.3.10) na porta 5432 (PostgreSQL) - DEVE VIR ANTES DA R5
--A FORWARD -s 10.0.1.10 -d 10.0.3.10 -p tcp --dport 5432 -j ACCEPT
-
-# R5: Bloqueio com LOG para o restante do tráfego indesejado direcionado à DB Zone (10.0.3.0/24)
--A FORWARD -d 10.0.3.0/24 -m limit --limit 5/min -j LOG --log-prefix "R5-DB-DROP: "
--A FORWARD -d 10.0.3.0/24 -j DROP
-
-# R3: Regra de host (documentada no gateway, aplicada na file-lan para portas 139/445 da LAN)
-# R6: db-zone (10.0.3.10) para file-lan (10.0.2.10) na porta 445
--A FORWARD -s 10.0.3.10 -d 10.0.2.10 -p tcp --dport 445 -j ACCEPT
-
-# R7: DNS (53) de todas as zonas para o fw-gw e DHCP (67/68) na LAN (enp0s9)
--A INPUT -p udp --dport 53 -j ACCEPT
--A INPUT -p tcp --dport 53 -j ACCEPT
--A INPUT -i enp0s9 -p udp --dport 67:68 -j ACCEPT
-
-# R9: LAN (enp0s9) para a WAN (enp0s3) liberando HTTP, HTTPS e DNS
--A FORWARD -i enp0s9 -o enp0s3 -p tcp -m multiport --dports 80,443 -j ACCEPT
--A FORWARD -i enp0s9 -o enp0s3 -p udp --dport 53 -j ACCEPT
--A FORWARD -i enp0s9 -o enp0s3 -p tcp --dport 53 -j ACCEPT
-
-# Chain PROVISION (para a janela de instalação da regra R8)
--A FORWARD -j PROVISION
-
+# FORWARD: tráfego entre zonas
+-A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -m comment --comment "R0_fwd_est" -j ACCEPT
+# R1 - Após o DNAT o destino já é 10.0.1.10 (saindo para a DMZ - enp0s8)
+-A FORWARD -i enp0s3 -o enp0s8 -d 10.0.1.10/32 -p tcp -m multiport --dports 80,443 -m comment --comment "R1_fwd_web" -j ACCEPT
+# R4 - admin-lan por SSH para todas as zonas
+-A FORWARD -i enp0s9 -s 10.0.2.50/32 -p tcp --dport 22 -m comment --comment "R4_fwd_ssh" -j ACCEPT
+# R2 - web-dmz para db-zone (DEVE vir antes da R5)
+-A FORWARD -i enp0s8 -o enp0s10 -s 10.0.1.10/32 -d 10.0.3.10/32 -p tcp --dport 5432 -m comment --comment "R2_web_db" -j ACCEPT
+# R6 - db-zone envia backup ao file-lan
+-A FORWARD -i enp0s10 -o enp0s9 -s 10.0.3.10/32 -d 10.0.2.10/32 -p tcp --dport 445 -m comment --comment "R6_db_file" -j ACCEPT
+# R5 - DMZ e WAN para DB Zone: registra e descarta
+-A FORWARD -i enp0s8 -o enp0s10 -m limit --limit 5/min -j LOG --log-prefix "R5-DB-DROP: "
+-A FORWARD -i enp0s8 -o enp0s10 -m comment --comment "R5_dmz_db_drop" -j DROP
+-A FORWARD -i enp0s3 -o enp0s10 -m limit --limit 5/min -j LOG --log-prefix "R5-DB-DROP: "
+-A FORWARD -i enp0s3 -o enp0s10 -m comment --comment "R5_wan_db_drop" -j DROP
+# R8 - Janela de instalação: chain PROVISION
+-A FORWARD -i enp0s9 -o enp0s3 -j PROVISION
+-A FORWARD -i enp0s10 -o enp0s3 -j PROVISION
+# R9 - LAN para a internet
+-A FORWARD -i enp0s9 -o enp0s3 -p tcp -m multiport --dports 80,443,53 -m comment --comment "R9_lan_net_tcp" -j ACCEPT
+-A FORWARD -i enp0s9 -o enp0s3 -p udp --dport 53 -m comment --comment "R9_lan_net_udp" -j ACCEPT
 COMMIT
