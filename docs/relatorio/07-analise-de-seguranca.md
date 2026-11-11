@@ -1,0 +1,70 @@
+# 7. Análise de Segurança
+
+## 7.1 Modelo de ameaça
+
+| Quem ataca | O quê | Onde queremos barrar |
+|---|---|---|
+| Internet | Site (DMZ) e, a partir dele, o banco | Firewall de borda (fw-gw), apenas 80/443 entram |
+| Servidor web comprometido | Banco de dados e LAN | R2 (só 5432), R5 (descarta o resto), DROP entre zonas |
+| Usuário interno | Dados do file-lan e administração | Firewall de host, permissões do Samba, SSH só do admin-lan |
+
+## 7.2 Defesa em camadas
+
+1. **Rede (fw-gw):** iptables com política DROP em INPUT e FORWARD, firewall stateful (R0 primeiro).
+2. **Host:** modelo `host-firewall.rules.j2`, política DROP em INPUT, SSH só de 10.0.2.50 (R4) e serviços por servidor. A R3 (LAN para file-lan) vive aqui, pois ambos estão na mesma sub-rede e o tráfego não passa pelo fw-gw.
+3. **Serviço:** `pg_hba.conf` aceitando só o web-dmz; permissões POSIX no Samba.
+4. **Acesso administrativo:** SSH só por chave ed25519 com passphrase, `PermitRootLogin no`, `PasswordAuthentication no`, `AllowUsers sysadmin`, `MaxAuthTries 3`, a partir de um único host (admin-lan).
+
+## 7.3 Matriz de regras e justificativa
+
+| Regra | Descrição | Justificativa de segurança |
+|---|---|---|
+| R0 | ESTABLISHED,RELATED aceitos | Firewall stateful: só respostas de conexões já autorizadas voltam |
+| R1 | WAN para web-dmz 80/443 (DNAT) | Única porta pública do projeto |
+| R2 | web-dmz para db-zone 5432 | Só o site grava no banco, e só nessa porta |
+| R3 | LAN para file-lan 139/445 | Acesso ao Samba limitado à LAN (firewall de host) |
+| R4 | admin-lan para todas as zonas, porta 22 | Administração centralizada; `-i` junto de `-s` impede forjar o IP de origem |
+| R5 | DMZ e WAN para DB Zone: LOG e DROP | Protege o banco de acesso direto; DROP não confirma a existência da porta |
+| R6 | db-zone para file-lan 445 | Backup diário, único fluxo db para LAN |
+| R7 | DNS (53) das zonas; DHCP só na LAN | Serviços essenciais sem abrir mais que o necessário |
+| R8 | DMZ e DB para internet só na janela de instalação | Servidores sensíveis ficam isolados fora de manutenção |
+| R9 | LAN para internet 80/443/53 | Navegação e atualizações dos usuários internos |
+
+## 7.4 Cenário: o servidor web foi comprometido
+
+| O invasor tenta | Resultado | Barreira |
+|---|---|---|
+| Alcançar a LAN | Bloqueado | FORWARD DROP |
+| SSH para qualquer máquina | Bloqueado | R4, firewall de host, AllowUsers |
+| Falar com o banco | Só 5432, e só do IP do web | R2, `pg_hba.conf`, privilégio mínimo |
+| Usar outro IP da DMZ | Bloqueado e registrado em log | R5 |
+| Sair para a internet | Bloqueado fora da janela | chain PROVISION vazia |
+| Consultar o DNS do fw-gw | Permitido | Risco residual (possível canal de exfiltração) |
+
+## 7.5 Evidências e testes realizados
+
+- **SSH endurecido no fw-gw:** `sshd -T` confirmou `permitrootlogin no`, `passwordauthentication no`, `allowusers sysadmin`, `maxauthtries 3`. Tentativas com senha e como root foram recusadas (`Permission denied (publickey)`). Evidência em `docs/evidencias/ssh/`.
+- **fw-apply.sh (rede de segurança):** os testes revelaram dois defeitos, corrigidos:
+  1. Neste sistema (iptables 1.8.10, backend nf_tables) o `iptables-restore --test` valida só a sintaxe e **não detecta chain inexistente**. Por isso o script cancela o temporizador de desfazer se a aplicação falhar.
+  2. Em máquina sem regras, o backup saía vazio e restaurá-lo não reabria o acesso. O script passou a gravar um backup padrão com políticas em ACCEPT.
+  Lição: a proteção real é o desfazer automático com um backup **válido**, não a validação prévia.
+- **Revisão do iptables.rules:** a revisão encontrou o jump da R8 na interface errada (LAN em vez de DMZ), corrigido no commit `b0fe4d3`.
+- **Modelo de firewall de host:** renderizado para web, db e file e validado com `iptables-restore --test`.
+- **matrix.sh:** escrito e executado; sem as VMs no ar, os casos falham por infraestrutura (código 255 distinguido de falha de firewall). **[PENDENTE: execução completa com o DROP ligado]**
+- **Janela R8, contador da R5, firewall DROP no fw-gw:** **[PENDENTE]**
+
+## 7.6 Riscos residuais e limitações
+
+- Certificado autoassinado.
+- NAT único e ausência de monitoramento e logs centralizados.
+- admin-lan como ponto único de administração (mitigado por passphrase e rede interna).
+- `sudo` sem senha nas VMs, aceitável em laboratório.
+- OUTPUT liberado nos firewalls de host.
+- IPv6 sem regras (o arquivo cobre só IPv4).
+- DNS como possível canal de exfiltração.
+- Conflito de faixa de endereços: a NAT do VirtualBox usa 10.0.3.0/24, a mesma da DB Zone, tratado na admin-lan com rotas estáticas via fw-gw.
+- ICMP entre zonas não é liberado pela matriz; testes usam `nc`, `curl` e `dig`.
+
+## 7.7 Próximos passos
+
+Let's Encrypt ou CA interna, rsyslog central com alertas, `fail2ban`, política IPv6, filtro de saída por host, bastion com 2FA.
