@@ -1,0 +1,36 @@
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+-N PROVISION
+-A INPUT -i lo -j ACCEPT
+-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -m comment --comment R0_input_est -j ACCEPT
+-A INPUT -s 10.0.2.50/32 -i enp0s9 -p tcp -m tcp --dport 22 -m comment --comment R4_ssh_fw -j ACCEPT
+-A INPUT -s 10.0.1.0/24 -i enp0s8 -p udp -m udp --dport 53 -m comment --comment R7_dns_dmz_udp -j ACCEPT
+-A INPUT -s 10.0.1.0/24 -i enp0s8 -p tcp -m tcp --dport 53 -m comment --comment R7_dns_dmz_tcp -j ACCEPT
+-A INPUT -s 10.0.2.0/24 -i enp0s9 -p udp -m udp --dport 53 -m comment --comment R7_dns_lan_udp -j ACCEPT
+-A INPUT -s 10.0.2.0/24 -i enp0s9 -p tcp -m tcp --dport 53 -m comment --comment R7_dns_lan_tcp -j ACCEPT
+-A INPUT -s 10.0.3.0/24 -i enp0s10 -p udp -m udp --dport 53 -m comment --comment R7_dns_db_udp -j ACCEPT
+-A INPUT -s 10.0.3.0/24 -i enp0s10 -p tcp -m tcp --dport 53 -m comment --comment R7_dns_db_tcp -j ACCEPT
+-A INPUT -i enp0s9 -p udp -m udp --sport 68 --dport 67 -m comment --comment R7_dhcp -j ACCEPT
+-A INPUT -m limit --limit 10/min -j LOG --log-prefix "OBS-DROP: "
+-A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -m comment --comment R0_fwd_est -j ACCEPT
+-A FORWARD -d 10.0.1.10/32 -i enp0s3 -o enp0s8 -p tcp -m multiport --dports 80,443 -m comment --comment R1_fwd_web -j ACCEPT
+-A FORWARD -s 10.0.2.50/32 -i enp0s9 -p tcp -m tcp --dport 22 -m comment --comment R4_fwd_ssh -j ACCEPT
+-A FORWARD -s 10.0.1.10/32 -d 10.0.3.10/32 -i enp0s8 -o enp0s10 -p tcp -m tcp --dport 5432 -m comment --comment R2_web_db -j ACCEPT
+-A FORWARD -s 10.0.3.10/32 -d 10.0.2.10/32 -i enp0s10 -o enp0s9 -p tcp -m tcp --dport 445 -m comment --comment R6_db_file -j ACCEPT
+-A FORWARD -i enp0s8 -o enp0s10 -m limit --limit 5/min -j LOG --log-prefix "R5-DB-DROP: "
+-A FORWARD -i enp0s8 -o enp0s10 -m comment --comment R5_dmz_db_drop -j DROP
+-A FORWARD -i enp0s3 -o enp0s10 -m limit --limit 5/min -j LOG --log-prefix "R5-DB-DROP: "
+-A FORWARD -i enp0s3 -o enp0s10 -m comment --comment R5_wan_db_drop -j DROP
+-A FORWARD -i enp0s8 -o enp0s3 -j PROVISION
+-A FORWARD -i enp0s10 -o enp0s3 -j PROVISION
+-A FORWARD -i enp0s9 -o enp0s3 -p tcp -m multiport --dports 80,443,53 -m comment --comment R9_lan_net_tcp -j ACCEPT
+-A FORWARD -i enp0s9 -o enp0s3 -p udp -m udp --dport 53 -m comment --comment R9_lan_net_udp -j ACCEPT
+-A FORWARD -m limit --limit 10/min -j LOG --log-prefix "OBS-DROP: "
+-P PREROUTING ACCEPT
+-P INPUT ACCEPT
+-P OUTPUT ACCEPT
+-P POSTROUTING ACCEPT
+-A PREROUTING -i enp0s3 -p tcp -m tcp --dport 80 -m comment --comment R1_dnat_80 -j DNAT --to-destination 10.0.1.10:80
+-A PREROUTING -i enp0s3 -p tcp -m tcp --dport 443 -m comment --comment R1_dnat_443 -j DNAT --to-destination 10.0.1.10:443
+-A POSTROUTING -o enp0s3 -m comment --comment R8_R9_masq -j MASQUERADE
