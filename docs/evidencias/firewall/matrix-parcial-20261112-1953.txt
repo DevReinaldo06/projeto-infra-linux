@@ -1,0 +1,27 @@
+AVISO: IFACE_WEB nao preenchido; o caso R5 sera marcado como FALHOU.
+== Devem ABRIR ==
+FALHOU [R2] web-dmz -> db-zone 5432 (SSH para web falhou: infraestrutura, nao firewall)
+FALHOU [R3] LAN (admin) -> file-lan 445 (esperado: abre, codigo: 1)
+FALHOU [R3] LAN (admin) -> file-lan 139 (esperado: abre, codigo: 1)
+PASSOU [R4] admin -> SSH no fw-gw
+FALHOU [R4] admin -> SSH no web-dmz (esperado: abre, codigo: 1)
+PASSOU [R4] admin -> SSH no db-zone
+FALHOU [R4] admin -> SSH no file-lan (esperado: abre, codigo: 1)
+FALHOU [R6] db-zone -> file-lan 445 (backup) (esperado: abre, codigo: 1)
+FALHOU [R7] DNS da DMZ no gateway (SSH para web falhou: infraestrutura, nao firewall)
+PASSOU [R7] DNS da DB no gateway
+FALHOU [R7] DNS da LAN no gateway (SSH para arquivos falhou: infraestrutura, nao firewall)
+FALHOU [R9] LAN (via file-lan) -> internet 443 (SSH para arquivos falhou: infraestrutura, nao firewall)
+== Devem BLOQUEAR ==
+FALHOU [R5] web-dmz com IP extra -> db 5432 (pre-requisito nao atendido)
+FALHOU [matriz] web-dmz -> file-lan 445 (SSH para web falhou: infraestrutura, nao firewall)
+FALHOU [matriz] DMZ -> LAN porta 22 (SSH para web falhou: infraestrutura, nao firewall)
+FALHOU [matriz] DMZ -> LAN porta 80 (SSH para web falhou: infraestrutura, nao firewall)
+FALHOU [matriz] DMZ -> LAN porta 443 (SSH para web falhou: infraestrutura, nao firewall)
+FALHOU [matriz] web-dmz -> SSH no fw-gw (so admin) (SSH para web falhou: infraestrutura, nao firewall)
+PASSOU [matriz] db-zone -> SSH no fw-gw (so admin)
+FALHOU [matriz] file-lan -> SSH no fw-gw (so admin) (SSH para arquivos falhou: infraestrutura, nao firewall)
+
+(Casos da WAN: rode na maquina fisica com --externo <IP-WAN>.)
+
+Total: 20 | Falhas: 16
