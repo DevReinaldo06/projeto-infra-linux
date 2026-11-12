@@ -1,0 +1,11 @@
+# So rodam se o arquivo de regras mudou.
+# O --test do nf_tables so pega erro de sintaxe, nao chain inexistente.
+# Recarregar o arquivo esvazia a chain PROVISION (fecha a janela R8).
+- name: Validar firewall
+  ansible.builtin.command: iptables-restore --test /etc/iptables/rules.v4
+  changed_when: true
+  notify: Aplicar firewall
+
+- name: Aplicar firewall
+  ansible.builtin.shell: iptables-restore < /etc/iptables/rules.v4
+  changed_when: true

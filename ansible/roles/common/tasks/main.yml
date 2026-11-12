@@ -1,0 +1,38 @@
+# Role common: pacotes basicos, chave do admin, sudo e hardening do SSH
+
+- name: Instalar pacotes basicos
+  ansible.builtin.apt:
+    name: [curl, dnsutils, netcat-openbsd, chrony]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Garantir o usuario sysadmin
+  ansible.builtin.user:
+    name: sysadmin
+    shell: /bin/bash
+    state: present
+
+- name: Autorizar a chave publica do admin-lan
+  ansible.posix.authorized_key:
+    user: sysadmin
+    state: present
+    key: "{{ lookup('ansible.builtin.file', 'admin.pub') }}"
+
+- name: Sudo sem senha para o sysadmin (validando com visudo)
+  ansible.builtin.copy:
+    content: "sysadmin ALL=(ALL) NOPASSWD:ALL\n"
+    dest: /etc/sudoers.d/90-projeto-admin
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
+
+- name: Copiar o hardening do SSH
+  ansible.builtin.copy:
+    src: sshd-10-projeto.conf
+    dest: /etc/ssh/sshd_config.d/10-projeto.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Validar e recarregar ssh

@@ -1,0 +1,2 @@
+servicos:
+  - { nome: postgres, porta: 5432, origem: 10.0.1.10/32 }

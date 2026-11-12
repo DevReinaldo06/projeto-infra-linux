@@ -1,0 +1,24 @@
+# host-firewall.rules.j2 - modelo de firewall de host (defesa em camadas)
+# Renderizado pela role firewall do Ansible a partir dos group_vars.
+# Quem ainda nao usa Ansible: substitua os campos entre chaves duplas a mao.
+# Carregar com: iptables-restore < arquivo.rules   (use scripts/fw-apply.sh)
+*filter
+:INPUT DROP [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT ACCEPT [0:0]
+
+# loopback e respostas de conexoes ja aceitas (R0)
+-A INPUT -i lo -j ACCEPT
+-A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -m comment --comment R0 -j ACCEPT
+
+# R4 - SSH somente do admin-lan
+-A INPUT -s {{ admin_ip | default('10.0.2.50') }}/32 -p tcp --dport 22 -m comment --comment R4_ssh_admin -j ACCEPT
+
+# ping com limite (so para diagnostico)
+-A INPUT -p icmp --icmp-type echo-request -m limit --limit 5/second --limit-burst 10 -m comment --comment icmp_limitado -j ACCEPT
+
+# ---------- BLOCO DE SERVICOS (vem dos group_vars de cada grupo) ----------
+{% for s in servicos %}
+-A INPUT {% if s.origem is defined %}-s {{ s.origem }} {% endif %}-p {{ s.proto | default('tcp') }} --dport {{ s.porta }} -m comment --comment {{ s.nome }} -j ACCEPT
+{% endfor %}
+COMMIT

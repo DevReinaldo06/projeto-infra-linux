@@ -1,0 +1,3 @@
+servicos:
+  - { nome: http,  porta: 80 }
+  - { nome: https, porta: 443 }

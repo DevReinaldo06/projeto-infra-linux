@@ -1,0 +1,11 @@
+# Handlers: so rodam se a tarefa que os chamou mudou algo.
+# Primeiro valida a sintaxe do sshd; so entao recarrega.
+- name: Validar e recarregar ssh
+  ansible.builtin.command: sshd -t
+  changed_when: true
+  notify: Recarregar ssh
+
+- name: Recarregar ssh
+  ansible.builtin.service:
+    name: ssh
+    state: reloaded

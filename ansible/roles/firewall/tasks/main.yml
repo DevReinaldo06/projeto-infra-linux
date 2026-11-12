@@ -1,0 +1,31 @@
+# Role firewall: iptables no gateway (arquivo pronto) e nos demais (template).
+# ATENCAO: so rodar a partir do admin-lan (10.0.2.50); a R4 libera so esse IP.
+
+- name: Instalar iptables-persistent
+  ansible.builtin.apt:
+    name: iptables-persistent
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Copiar o iptables.rules do gateway
+  ansible.builtin.copy:
+    src: iptables.rules
+    dest: /etc/iptables/rules.v4
+    owner: root
+    group: root
+    mode: "0644"
+  when: "'gateway' in group_names"
+  notify: Validar firewall
+
+- name: Gerar o firewall de host a partir do modelo
+  ansible.builtin.template:
+    src: host-firewall.rules.j2
+    dest: /etc/iptables/rules.v4
+    owner: root
+    group: root
+    mode: "0644"
+    trim_blocks: true
+    lstrip_blocks: true
+  when: "'gateway' not in group_names"
+  notify: Validar firewall

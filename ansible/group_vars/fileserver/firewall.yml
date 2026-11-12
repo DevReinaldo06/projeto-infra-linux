@@ -1,0 +1,5 @@
+# Servicos liberados no firewall de host do file-lan (role firewall)
+servicos:
+  - { nome: smb139,    porta: 139, origem: 10.0.2.0/24 }
+  - { nome: smb445,    porta: 445, origem: 10.0.2.0/24 }
+  - { nome: smb445_db, porta: 445, origem: 10.0.3.10/32 }
