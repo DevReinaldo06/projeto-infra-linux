@@ -43,16 +43,28 @@
 
 ## 7.5 Evidências e testes realizados
 
-- **SSH endurecido no fw-gw:** `sshd -T` confirmou `permitrootlogin no`, `passwordauthentication no`, `allowusers sysadmin`, `maxauthtries 3`. Tentativas com senha e como root foram recusadas (`Permission denied (publickey)`). Evidência em `docs/evidencias/ssh/`.
-- **fw-apply.sh (rede de segurança):** os testes revelaram dois defeitos, corrigidos:
-  1. Neste sistema (iptables 1.8.10, backend nf_tables) o `iptables-restore --test` valida só a sintaxe e **não detecta chain inexistente**. Por isso o script cancela o temporizador de desfazer se a aplicação falhar.
-  2. Em máquina sem regras, o backup saía vazio e restaurá-lo não reabria o acesso. O script passou a gravar um backup padrão com políticas em ACCEPT.
-  Lição: a proteção real é o desfazer automático com um backup **válido**, não a validação prévia.
-- **Revisão do iptables.rules:** a revisão encontrou o jump da R8 na interface errada (LAN em vez de DMZ), corrigido no commit `b0fe4d3`.
-- **Modelo de firewall de host:** renderizado para web, db e file e validado com `iptables-restore --test`.
-- **matrix.sh:** escrito e executado; sem as VMs no ar, os casos falham por infraestrutura (código 255 distinguido de falha de firewall). **[PENDENTE: execução completa com o DROP ligado]**
-- **Janela R8, contador da R5, firewall DROP no fw-gw:** **[PENDENTE]**
+**Ambiente de validação:** os testes do firewall foram feitos em uma cópia do fw-gw rodando na máquina do autor, junto com a admin-lan. As regras aplicadas são exatamente as de `configs/fw-gw/iptables.rules` do repositório. As VMs das zonas DMZ, DB e LAN rodavam em outros computadores, e uma Rede Interna do VirtualBox só conecta VMs do mesmo computador. Por isso a matriz completa não pôde ser exercitada.
 
+**Provado:**
+- **SSH endurecido no fw-gw:** `sshd -T` confirmou `permitrootlogin no`, `passwordauthentication no`, `allowusers sysadmin`, `maxauthtries 3`. Tentativas com senha e como root foram recusadas (`Permission denied (publickey)`). Evidência em `docs/evidencias/ssh/`.
+- **Modo observação:** aplicado com `fw-apply.sh`; regras R0 a R9 carregadas, NAT (DNAT e MASQUERADE) ativo. Evidência em `docs/evidencias/firewall/iptables-observacao-*.txt`.
+- **Política DROP:** aplicada em INPUT e FORWARD. O SSH da admin-lan (R4) continuou funcionando. Evidência em `docs/evidencias/firewall/iptables-drop-*.txt`.
+- **Contadores da R5:** regras LOG e DROP da R5 carregadas e zeradas, prontas para contar.
+- **Modelo de firewall de host:** renderizado para web, db e file e validado com `iptables-restore --test`.
+- **Roles Ansible `common` e `firewall`:** escritas, com `--syntax-check` e renderização do template validados (commit `a9f972f`). Não foram executadas contra uma VM real.
+- **fw-apply.sh (rede de segurança):** os testes revelaram dois defeitos, corrigidos:
+  1. Neste sistema (iptables 1.8.10, nf_tables) o `--test` valida só a sintaxe e não detecta chain inexistente. O script passou a cancelar o temporizador de desfazer se a aplicação falhar.
+  2. Em máquina sem regras, o backup saía vazio e restaurá-lo não reabria o acesso. O script passou a gravar um backup padrão com políticas em ACCEPT.
+  Lição: a proteção real é o desfazer automático com um backup válido, não a validação prévia.
+- **Revisão do iptables.rules:** o jump da R8 estava na interface errada (LAN em vez de DMZ), corrigido no commit `b0fe4d3` e confirmado na revisão do grupo.
+
+**Não provado (pendente):**
+- Execução completa do `matrix.sh` com todas as VMs no ar.
+- Contador da R5 subindo com tráfego real da DMZ para o banco.
+- Janela R8 (`fw-provisioning.sh`) testada no fw-gw.
+- NAT da LAN para a internet com o DROP ligado (R9).
+- Firewall de host aplicado em web, db e file.
+- Roles Ansible executadas contra VMs reais.
 ## 7.6 Riscos residuais e limitações
 
 - Certificado autoassinado.
