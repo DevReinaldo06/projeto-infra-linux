@@ -1,0 +1,93 @@
+---
+- name: Habilitar e iniciar o PostgreSQL 16
+  ansible.builtin.service:
+    name: postgresql@16-main
+    enabled: true
+    state: started
+
+- name: Instalar configurações do PostgreSQL
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../../configs/db-zone/{{ item.src }}"
+    dest: "/etc/postgresql/16/main/{{ item.dest }}"
+    owner: postgres
+    group: postgres
+    mode: "{{ item.mode }}"
+    backup: true
+  loop:
+    - {src: 10-projeto.conf, dest: conf.d/10-projeto.conf, mode: '0644'}
+    - {src: pg_hba.conf, dest: pg_hba.conf, mode: '0640'}
+  notify: Reiniciar PostgreSQL 16
+
+- name: Validar configuração e preparar o banco
+  become_user: postgres
+  block:
+    - name: Validar os parâmetros do servidor
+      ansible.builtin.command:
+        argv:
+          - /usr/lib/postgresql/16/bin/postgres
+          - -D
+          - /var/lib/postgresql/16/main
+          - -c
+          - config_file=/etc/postgresql/16/main/postgresql.conf
+          - -C
+          - listen_addresses
+      register: database_listen
+      changed_when: false
+      failed_when: database_listen.rc != 0 or database_listen.stdout | trim != '10.0.3.10'
+
+    - name: Verificar erros no pg_hba.conf antes de reiniciar
+      community.postgresql.postgresql_query:
+        db: postgres
+        query: SELECT line_number, error FROM pg_hba_file_rules WHERE error IS NOT NULL
+      register: database_hba
+
+    - name: Exigir um pg_hba.conf válido
+      ansible.builtin.assert:
+        that: database_hba.query_result | length == 0
+        fail_msg: "O pg_hba.conf contém regras inválidas. Confira a saída da consulta anterior."
+
+    - name: Criar usuários do banco
+      community.postgresql.postgresql_user:
+        name: "{{ item }}"
+        role_attr_flags: LOGIN
+        password: "{{ (database_role_passwords | default({}))[item] | default(omit) }}"
+        state: present
+      no_log: true
+      loop:
+        - app_user
+        - analista_dados
+
+    - name: Criar o appdb
+      community.postgresql.postgresql_db:
+        name: appdb
+        state: present
+
+    - name: Restringir as permissões padrão do appdb
+      community.postgresql.postgresql_privs:
+        db: appdb
+        type: database
+        objs: appdb
+        roles: PUBLIC
+        privs: ALL
+        state: absent
+
+    - name: Autorizar os usuários a se conectarem ao appdb
+      community.postgresql.postgresql_privs:
+        db: appdb
+        type: database
+        objs: appdb
+        roles: app_user,analista_dados
+        privs: CONNECT
+        state: present
+
+    - name: Verificar se a tabela registros já existe
+      community.postgresql.postgresql_query:
+        db: appdb
+        query: SELECT to_regclass('public.registros') IS NOT NULL AS existe
+      register: database_schema
+
+    - name: Criar a tabela e aplicar as permissões na instalação inicial
+      ansible.builtin.command:
+        argv: [psql, -X, -v, ON_ERROR_STOP=1, -1, -d, appdb, -f, '-']
+        stdin: "{{ lookup('ansible.builtin.file', role_path ~ '/files/schema.sql') }}"
+      when: not database_schema.query_result[0].existe
