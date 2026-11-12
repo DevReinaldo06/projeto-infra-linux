@@ -1,0 +1,68 @@
+# {{ ansible_managed }}
+# =====================================================================
+# /etc/samba/smb.conf - file-lan (arquivos.empresa.local)
+# Gerado pela role fileserver. Não edite à mão: altere o template.
+# =====================================================================
+
+[global]
+    # --- Identificação ---
+    workgroup = {{ fileserver_workgroup }}
+    server string = {{ fileserver_server_string }}
+    server role = standalone server
+
+    # --- Autenticação e segurança ---
+    # Todo acesso exige usuário e senha cadastrados no Samba.
+    security = user
+    # Login inválido nunca vira "visitante".
+    map to guest = Never
+    # Proíbe SMB1 (antigo e vulnerável).
+    server min protocol = SMB2
+    # Bloqueia listagem anônima de usuários e compartilhamentos.
+    restrict anonymous = 2
+
+    # --- Controle por IP ---
+    # Só LAN, db-zone (backup) e o próprio servidor. O resto é bloqueado.
+    hosts allow = {{ fileserver_hosts_lan }} {{ fileserver_hosts_db }} 127.0.0.1
+    hosts deny = ALL
+
+    # --- Logs ---
+    log file = /var/log/samba/log.%m
+    max log size = 1000
+
+    # --- Impressão desativada ---
+    load printers = no
+    printing = bsd
+    printcap name = /dev/null
+    disable spoolss = yes
+
+# --- publico: todos os funcionários leem e escrevem ---
+[publico]
+    comment = Area comum da empresa
+    path = {{ fileserver_ponto_montagem }}/publico
+    valid users = @funcionarios
+    read only = no
+    create mask = 0664
+    directory mask = 2775
+    hide unreadable = yes
+
+# --- projetos: devs escrevem, diretoria só lê, mkt não entra ---
+[projetos]
+    comment = Projetos de desenvolvimento
+    path = {{ fileserver_ponto_montagem }}/projetos
+    valid users = @devs @diretoria
+    read only = yes
+    write list = @devs
+    create mask = 0660
+    directory mask = 2770
+    hosts allow = {{ fileserver_hosts_lan }}
+
+# --- backups: backup_mgr grava, diretoria só lê ---
+[backups]
+    comment = Backups do banco de dados
+    path = {{ fileserver_ponto_montagem }}/backups
+    valid users = @backup_mgr @diretoria
+    read only = yes
+    write list = @backup_mgr
+    create mask = 0660
+    directory mask = 2770
+    hosts allow = {{ fileserver_hosts_lan }} {{ fileserver_hosts_db }}

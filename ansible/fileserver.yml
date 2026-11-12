@@ -1,0 +1,8 @@
+---
+# Playbook que aplica a role fileserver no file-lan.
+# Uso: ansible-playbook fileserver.yml --ask-vault-pass
+- name: Servidor de arquivos (Samba, cotas e rotação de backups)
+  hosts: fileserver
+  become: true
+  roles:
+    - fileserver

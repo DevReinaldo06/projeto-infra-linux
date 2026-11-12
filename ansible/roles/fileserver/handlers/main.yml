@@ -1,0 +1,6 @@
+---
+# Executado só quando o smb.conf muda (notify na tarefa do template).
+- name: Recarregar smbd
+  ansible.builtin.service:
+    name: smbd
+    state: reloaded

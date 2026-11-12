@@ -1,0 +1,52 @@
+---
+# Variáveis padrão da role fileserver. Qualquer uma pode ser trocada em
+# group_vars/fileserver/ sem mexer na role.
+
+# --- Disco (CUIDADO: a formatação só ocorre se não houver sistema de arquivos)
+fileserver_disco: /dev/sdb
+fileserver_particao: "{{ fileserver_disco }}1"
+fileserver_rotulo: COMPARTILHADO
+fileserver_ponto_montagem: /compartilhado
+
+# --- Samba -----------------------------------------------------------
+fileserver_workgroup: WORKGROUP
+fileserver_server_string: "Servidor de Arquivos - empresa.local"
+fileserver_hosts_lan: "10.0.2.0/24"
+fileserver_hosts_db: "10.0.3.10"
+
+# --- Grupos POSIX (GIDs fixos) --------------------------------------
+fileserver_grupos:
+  - { nome: funcionarios, gid: 3000 }
+  - { nome: devs,         gid: 3001 }
+  - { nome: mkt,          gid: 3002 }
+  - { nome: diretoria,    gid: 3003 }
+  - { nome: backup_mgr,   gid: 3004 }
+
+# --- Usuários (UIDs fixos, sem shell, sem home) ---------------------
+# As senhas do Samba vêm do cofre: vault_samba_senhas.<nome>
+fileserver_usuarios:
+  - { nome: ana,        uid: 3000, grupo: funcionarios, extras: [devs],      descricao: "Ana" }
+  - { nome: bruno,      uid: 3001, grupo: funcionarios, extras: [mkt],       descricao: "Bruno" }
+  - { nome: carla,      uid: 3002, grupo: funcionarios, extras: [diretoria], descricao: "Carla" }
+  - { nome: svc_backup, uid: 3003, grupo: backup_mgr,   extras: [],          descricao: "Service Backup" }
+
+# --- Pastas ----------------------------------------------------------
+fileserver_pastas:
+  - { nome: publico,  grupo: funcionarios, modo: "2775", acl_diretoria: false }
+  - { nome: projetos, grupo: devs,         modo: "2770", acl_diretoria: true }
+  - { nome: backups,  grupo: backup_mgr,   modo: "2770", acl_diretoria: true }
+
+# --- Cotas (em KB: 81920 = 80 MB, 102400 = 100 MB) -----------------
+fileserver_cotas:
+  - { tipo: u, alvo: ana,        soft: 81920,  hard: 102400 }
+  - { tipo: u, alvo: bruno,      soft: 81920,  hard: 102400 }
+  - { tipo: g, alvo: backup_mgr, soft: 716800, hard: 819200 }
+fileserver_cota_graca_dias: 7
+
+# --- Rotação de backups ----------------------------------------------
+# Os arquivos de origem ficam no repositório (scripts/ e configs/file-lan/).
+fileserver_rotacao_script: "{{ playbook_dir }}/../scripts/rotacao_backups.sh"
+fileserver_rotacao_cron: "{{ playbook_dir }}/../configs/file-lan/rotacao-backups.cron"
+
+# --- Acesso do tests/samba.sh ao repquota (vazio = não configurar) --
+fileserver_ssh_user: sysadmin

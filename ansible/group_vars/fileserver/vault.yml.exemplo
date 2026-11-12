@@ -1,0 +1,10 @@
+# EXEMPLO. Não é lido pelo Ansible (a extensão é .exemplo).
+# Para criar o cofre de verdade, rode dentro da pasta ansible/:
+#   ansible-vault create group_vars/fileserver/vault.yml
+# e cole este conteúdo, trocando os valores pelas senhas reais.
+# As senhas reais NUNCA entram neste arquivo.
+vault_samba_senhas:
+  ana: "TROQUE"
+  bruno: "TROQUE"
+  carla: "TROQUE"
+  svc_backup: "TROQUE"

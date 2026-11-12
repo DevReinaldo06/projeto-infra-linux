@@ -1,0 +1,4 @@
+# Nunca versionar a senha do cofre nem arquivos temporários
+.vault_pass*
+*.retry
+*.log

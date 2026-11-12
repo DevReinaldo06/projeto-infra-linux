@@ -1,0 +1,286 @@
+---
+# =====================================================================
+# Role fileserver: leva o file-lan do zero ao estado final.
+# Idempotente: a segunda execução deve dar changed=0.
+#
+# Ordem (a mesma em que o servidor foi montado à mão):
+#   0) conferências  1) pacotes  2) disco e cotas  3) grupos e usuários
+#   4) usuários do Samba  5) pastas e ACL  6) smb.conf  7) cotas
+#   8) rotação de backups  9) acesso do teste ao repquota
+# =====================================================================
+
+# ---------------------------------------------------------------------
+# 0) Conferências de segurança
+# ---------------------------------------------------------------------
+- name: Conferir que o cofre com as senhas do Samba foi carregado
+  ansible.builtin.assert:
+    that:
+      - vault_samba_senhas is defined
+      - (fileserver_usuarios | map(attribute='nome') | list
+         | difference(vault_samba_senhas.keys() | list)) | length == 0
+    fail_msg: "Falta o cofre group_vars/fileserver/vault.yml (veja vault.yml.exemplo)."
+    quiet: true
+  no_log: true
+
+# ---------------------------------------------------------------------
+# 1) Pacotes
+# ---------------------------------------------------------------------
+- name: Instalar samba, quota, acl, cron e parted
+  ansible.builtin.apt:
+    name:
+      - samba
+      - quota
+      - acl
+      - cron
+      - parted
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+# O módulo quota_v2 pode vir em um pacote extra. Se ele não existir nesta
+# versão do kernel, seguimos em frente (por isso failed_when: false).
+- name: Instalar módulos extras do kernel (quota_v2), se existirem
+  ansible.builtin.apt:
+    name: "linux-modules-extra-{{ ansible_kernel }}"
+    state: present
+  failed_when: false
+
+# ---------------------------------------------------------------------
+# 2) Disco, sistema de arquivos e cotas
+# ---------------------------------------------------------------------
+- name: Garantir que o disco informado não é o disco do sistema
+  ansible.builtin.assert:
+    that:
+      - >-
+        (ansible_mounts
+         | selectattr('device', 'match', '^' ~ fileserver_disco)
+         | rejectattr('mount', 'equalto', fileserver_ponto_montagem)
+         | list | length) == 0
+    fail_msg: "{{ fileserver_disco }} tem partições montadas fora de {{ fileserver_ponto_montagem }}. Confira a variável fileserver_disco."
+    quiet: true
+
+- name: Verificar se a partição já existe
+  ansible.builtin.stat:
+    path: "{{ fileserver_particao }}"
+  register: fs_particao
+
+# Só cria a tabela de partições se a partição NÃO existir. Se existir,
+# nada é tocado (criar o rótulo de novo apagaria os dados).
+- name: Criar partição única no disco (somente se ainda não existir)
+  community.general.parted:
+    device: "{{ fileserver_disco }}"
+    number: 1
+    state: present
+    label: gpt
+    fs_type: ext4
+  when: not fs_particao.stat.exists
+
+# O módulo filesystem só formata se a partição NÃO tiver sistema de arquivos.
+- name: Criar ext4 com rótulo (somente se não houver sistema de arquivos)
+  community.general.filesystem:
+    fstype: ext4
+    dev: "{{ fileserver_particao }}"
+    opts: "-L {{ fileserver_rotulo }}"
+
+- name: Ler o UUID da partição
+  ansible.builtin.command: "blkid -s UUID -o value {{ fileserver_particao }}"
+  register: fs_uuid
+  changed_when: false
+  check_mode: false
+
+- name: Montar em /compartilhado por UUID com usrquota e grpquota
+  ansible.posix.mount:
+    path: "{{ fileserver_ponto_montagem }}"
+    src: "UUID={{ fs_uuid.stdout }}"
+    fstype: ext4
+    opts: defaults,usrquota,grpquota
+    dump: 0
+    passno: 2
+    state: mounted
+
+- name: Criar os arquivos de cota (quotacheck) se ainda não existirem
+  ansible.builtin.command: "quotacheck -cugm {{ fileserver_ponto_montagem }}"
+  args:
+    creates: "{{ fileserver_ponto_montagem }}/aquota.user"
+
+- name: Ver o estado das cotas
+  ansible.builtin.command: "quotaon -p {{ fileserver_ponto_montagem }}"
+  register: fs_quotaon
+  changed_when: false
+  check_mode: false
+  failed_when: false
+
+- name: Ligar a cota de usuário, se estiver desligada
+  ansible.builtin.command: "quotaon -u {{ fileserver_ponto_montagem }}"
+  when: fs_quotaon.stdout_lines | select('match', '^user quota on .* is off$') | list | length > 0
+
+- name: Ligar a cota de grupo, se estiver desligada
+  ansible.builtin.command: "quotaon -g {{ fileserver_ponto_montagem }}"
+  when: fs_quotaon.stdout_lines | select('match', '^group quota on .* is off$') | list | length > 0
+
+# ---------------------------------------------------------------------
+# 3) Grupos e usuários POSIX (UID e GID fixos)
+# ---------------------------------------------------------------------
+- name: Criar grupos
+  ansible.builtin.group:
+    name: "{{ item.nome }}"
+    gid: "{{ item.gid }}"
+    state: present
+  loop: "{{ fileserver_grupos }}"
+  loop_control:
+    label: "{{ item.nome }}"
+
+- name: Criar usuários sem shell e sem home
+  ansible.builtin.user:
+    name: "{{ item.nome }}"
+    uid: "{{ item.uid }}"
+    group: "{{ item.grupo }}"
+    groups: "{{ item.extras | join(',') }}"
+    append: true
+    shell: /usr/sbin/nologin
+    create_home: false
+    comment: "{{ item.descricao }}"
+    state: present
+  loop: "{{ fileserver_usuarios }}"
+  loop_control:
+    label: "{{ item.nome }}"
+
+# ---------------------------------------------------------------------
+# 4) Usuários do Samba (senhas vêm do ansible-vault)
+# ---------------------------------------------------------------------
+- name: Listar os usuários já cadastrados no Samba
+  ansible.builtin.command: pdbedit -L
+  register: samba_pdb
+  changed_when: false
+  check_mode: false
+
+# A senha é enviada pela entrada padrão (smbpasswd -s) e nunca aparece
+# no log (no_log) nem na linha de comando.
+- name: Cadastrar no Samba os usuários que ainda não existem
+  ansible.builtin.command: "smbpasswd -s -a {{ item.nome }}"
+  args:
+    stdin: "{{ vault_samba_senhas[item.nome] }}\n{{ vault_samba_senhas[item.nome] }}"
+  loop: "{{ fileserver_usuarios }}"
+  loop_control:
+    label: "{{ item.nome }}"
+  when: item.nome not in (samba_pdb.stdout_lines | map('regex_replace', ':.*$', '') | list)
+  no_log: true
+
+# ---------------------------------------------------------------------
+# 5) Pastas, setgid e ACL
+# ---------------------------------------------------------------------
+- name: Criar as pastas com dono, grupo e setgid
+  ansible.builtin.file:
+    path: "{{ fileserver_ponto_montagem }}/{{ item.nome }}"
+    state: directory
+    owner: root
+    group: "{{ item.grupo }}"
+    mode: "{{ item.modo }}"
+  loop: "{{ fileserver_pastas }}"
+  loop_control:
+    label: "{{ item.nome }}"
+
+# Cada pasta com acl_diretoria recebe duas ACLs: a normal e a padrão
+# (default), para que os arquivos novos herdem a leitura da diretoria.
+- name: ACL de leitura para a diretoria (normal e padrão)
+  ansible.posix.acl:
+    path: "{{ fileserver_ponto_montagem }}/{{ item.0.nome }}"
+    entity: diretoria
+    etype: group
+    permissions: rx
+    default: "{{ item.1 }}"
+    state: present
+  loop: "{{ fileserver_pastas | selectattr('acl_diretoria') | list | product([false, true]) | list }}"
+  loop_control:
+    label: "{{ item.0.nome }} (padrão={{ item.1 }})"
+
+# ---------------------------------------------------------------------
+# 6) Configuração do Samba
+# ---------------------------------------------------------------------
+- name: Instalar o smb.conf (validado com testparm antes de gravar)
+  ansible.builtin.template:
+    src: smb.conf.j2
+    dest: /etc/samba/smb.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "testparm -s %s"
+  notify: Recarregar smbd
+
+- name: Garantir smbd e nmbd ativos e habilitados no boot
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - smbd
+    - nmbd
+
+# ---------------------------------------------------------------------
+# 7) Cotas de usuário e de grupo (idempotente)
+# ---------------------------------------------------------------------
+# Lê a cota atual (em KB, em uma linha) e só chama setquota se os limites
+# soft e hard forem diferentes dos desejados.
+- name: Ler as cotas atuais
+  ansible.builtin.command: "quota -w -{{ item.tipo }} {{ item.alvo }}"
+  register: cotas_atuais
+  changed_when: false
+  check_mode: false
+  failed_when: false
+  loop: "{{ fileserver_cotas }}"
+  loop_control:
+    label: "{{ item.alvo }}"
+
+- name: Definir as cotas que ainda não estão como o esperado
+  ansible.builtin.command: >-
+    setquota -{{ item.item.tipo }} {{ item.item.alvo }}
+    {{ item.item.soft }} {{ item.item.hard }} 0 0 {{ fileserver_ponto_montagem }}
+  loop: "{{ cotas_atuais.results }}"
+  loop_control:
+    label: "{{ item.item.alvo }}"
+  when: not (item.stdout is regex('\\s' ~ item.item.soft ~ '\\s+' ~ item.item.hard ~ '\\s'))
+
+- name: Ler o período de graça atual
+  ansible.builtin.command: "repquota -u {{ fileserver_ponto_montagem }}"
+  register: cota_graca
+  changed_when: false
+  check_mode: false
+
+- name: Definir o período de graça
+  ansible.builtin.command: >-
+    setquota -t {{ fileserver_cota_graca_dias * 86400 }}
+    {{ fileserver_cota_graca_dias * 86400 }} {{ fileserver_ponto_montagem }}
+  when: "('Block grace time: ' ~ fileserver_cota_graca_dias ~ 'days') not in cota_graca.stdout"
+
+# ---------------------------------------------------------------------
+# 8) Rotação dos backups
+# ---------------------------------------------------------------------
+- name: Instalar o script de rotação
+  ansible.builtin.copy:
+    src: "{{ fileserver_rotacao_script }}"
+    dest: /usr/local/bin/rotacao_backups.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Agendar a rotação no cron (todo dia às 03:00)
+  ansible.builtin.copy:
+    src: "{{ fileserver_rotacao_cron }}"
+    dest: /etc/cron.d/rotacao-backups
+    owner: root
+    group: root
+    mode: "0644"
+
+# ---------------------------------------------------------------------
+# 9) Permite ao usuário do SSH rodar só o repquota sem senha
+#    (usado pelo tests/samba.sh, seção 3)
+# ---------------------------------------------------------------------
+- name: Liberar o repquota sem senha para o usuário de teste
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/fileserver-quota
+    content: "{{ fileserver_ssh_user }} ALL=(root) NOPASSWD: /usr/sbin/repquota\n"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "visudo -cf %s"
+  when: fileserver_ssh_user | length > 0
