@@ -1,5 +1,6 @@
-# Role gateway: pacotes, roteamento, DHCP e DNS do fw-gw
-# O firewall (iptables) fica na role "firewall", do Eduardo.
+# Role gateway: pacotes, roteamento, NAT, DHCP e DNS do fw-gw. Dono: Reinaldo.
+# Os arquivos vem de configs/fw-gw (fonte unica, sem copias dentro da role).
+# O firewall completo (iptables.rules) fica na role "firewall", do Eduardo.
 
 - name: Instalar pacotes do gateway
   ansible.builtin.apt:
@@ -15,9 +16,17 @@
     sysctl_file: /etc/sysctl.d/99-roteamento.conf
     reload: true
 
+- name: NAT - mascarar a saida pela WAN (mesma regra R8_R9_masq do firewall)
+  ansible.builtin.iptables:
+    table: nat
+    chain: POSTROUTING
+    out_interface: "{{ wan_if }}"
+    comment: R8_R9_masq
+    jump: MASQUERADE
+
 - name: Copiar o netplan do gateway
   ansible.builtin.copy:
-    src: netplan.yaml
+    src: "{{ gw_configs }}/netplan.yaml"
     dest: /etc/netplan/50-fw-gw.yaml
     owner: root
     group: root
@@ -25,7 +34,7 @@
 
 - name: Definir a interface do DHCP
   ansible.builtin.copy:
-    src: isc-dhcp-server
+    src: "{{ gw_configs }}/isc-dhcp-server"
     dest: /etc/default/isc-dhcp-server
     owner: root
     group: root
@@ -34,7 +43,7 @@
 
 - name: Copiar o dhcpd.conf validando a sintaxe antes
   ansible.builtin.copy:
-    src: dhcpd.conf
+    src: "{{ gw_configs }}/dhcpd.conf"
     dest: /etc/dhcp/dhcpd.conf
     owner: root
     group: root
@@ -44,7 +53,7 @@
 
 - name: Copiar as opcoes do Bind9
   ansible.builtin.copy:
-    src: named.conf.options
+    src: "{{ gw_configs }}/named.conf.options"
     dest: /etc/bind/named.conf.options
     owner: root
     group: bind
@@ -54,7 +63,7 @@
 
 - name: Copiar a lista de zonas do Bind9
   ansible.builtin.copy:
-    src: named.conf.local
+    src: "{{ gw_configs }}/named.conf.local"
     dest: /etc/bind/named.conf.local
     owner: root
     group: bind
@@ -71,7 +80,7 @@
 
 - name: Copiar os arquivos de zona
   ansible.builtin.copy:
-    src: "zonas/{{ item }}"
+    src: "{{ gw_configs }}/zonas/{{ item }}"
     dest: "/etc/bind/zones/{{ item }}"
     owner: root
     group: bind

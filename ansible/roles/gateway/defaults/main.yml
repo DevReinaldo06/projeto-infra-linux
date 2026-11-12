@@ -1,0 +1,5 @@
+# Variaveis da role gateway. Dono: Reinaldo.
+# Fonte unica dos arquivos: configs/fw-gw (a role aponta para la, sem copias).
+gw_configs: "{{ playbook_dir }}/../configs/fw-gw"
+# Interface da WAN (saida para a internet) no fw-gw
+wan_if: enp0s3
