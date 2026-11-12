@@ -56,15 +56,16 @@
   1. Neste sistema (iptables 1.8.10, nf_tables) o `--test` valida só a sintaxe e não detecta chain inexistente. O script passou a cancelar o temporizador de desfazer se a aplicação falhar.
   2. Em máquina sem regras, o backup saía vazio e restaurá-lo não reabria o acesso. O script passou a gravar um backup padrão com políticas em ACCEPT.
   Lição: a proteção real é o desfazer automático com um backup válido, não a validação prévia.
+- **R9 e NAT com DROP ligado:** `nc -zv -w3 8.8.8.8 443` da admin-lan, via fw-gw, retornou `succeeded`. Prova R9, MASQUERADE e R0. Evidência em `docs/evidencias/firewall/r9-nat-com-drop-*.txt`.
 - **Revisão do iptables.rules:** o jump da R8 estava na interface errada (LAN em vez de DMZ), corrigido no commit `b0fe4d3` e confirmado na revisão do grupo.
 
 **Não provado (pendente):**
 - Execução completa do `matrix.sh` com todas as VMs no ar.
 - Contador da R5 subindo com tráfego real da DMZ para o banco.
 - Janela R8 (`fw-provisioning.sh`) testada no fw-gw.
-- NAT da LAN para a internet com o DROP ligado (R9).
 - Firewall de host aplicado em web, db e file.
 - Roles Ansible executadas contra VMs reais.
+
 ## 7.6 Riscos residuais e limitações
 
 - Certificado autoassinado.

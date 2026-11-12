@@ -1,0 +1,4 @@
+# Teste R9 com politica DROP no fw-gw (copia de teste do autor)
+# Comando: nc -zv -w3 8.8.8.8 443, da admin-lan (10.0.2.50) via fw-gw
+Connection to 8.8.8.8 443 port [tcp/https] succeeded!
+Thu Nov 12 02:35:45 AM UTC 2026
