@@ -1,0 +1,8 @@
+# Variaveis compartilhadas por todas as roles (o plano de IPs em um so lugar)
+dominio: empresa.local
+rede_dmz: 10.0.1.0/24
+rede_lan: 10.0.2.0/24
+rede_db: 10.0.3.0/24
+gw_dmz: 10.0.1.1
+gw_lan: 10.0.2.1
+gw_db: 10.0.3.1

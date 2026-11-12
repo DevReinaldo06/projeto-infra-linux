@@ -1,0 +1,18 @@
+$TTL 3600
+@   IN  SOA fw.empresa.local. admin.empresa.local. (
+            2026110701   ; serial: AUMENTE este número a cada edição (AAAAMMDDnn)
+            3600         ; refresh
+            900          ; retry
+            604800       ; expire
+            3600 )       ; TTL negativo
+
+    IN  NS  fw.empresa.local.
+
+; nome          tipo  endereço
+fw        IN  A   10.0.1.1
+fw-lan    IN  A   10.0.2.1
+fw-db     IN  A   10.0.3.1
+web       IN  A   10.0.1.10
+db        IN  A   10.0.3.10
+arquivos  IN  A   10.0.2.10
+admin     IN  A   10.0.2.50

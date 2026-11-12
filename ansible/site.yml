@@ -1,0 +1,5 @@
+# Playbook principal: chama as roles na ordem certa (firewall por ultimo)
+# Por enquanto so o gateway; as demais roles entram quando ficarem prontas.
+- hosts: gateway
+  become: true
+  roles: [gateway]

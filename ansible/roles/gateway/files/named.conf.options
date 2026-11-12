@@ -1,0 +1,17 @@
+options {
+    directory "/var/cache/bind";
+
+    // escuta apenas nos IPs do fw-gw (um por zona) e no próprio localhost
+    listen-on { 127.0.0.1; 10.0.1.1; 10.0.2.1; 10.0.3.1; };
+    listen-on-v6 { none; };
+
+    // só as redes do projeto podem perguntar e usar recursão
+    allow-query     { 127.0.0.1; 10.0.0.0/16; };
+    allow-recursion { 127.0.0.1; 10.0.0.0/16; };
+    recursion yes;
+
+    // o que não for empresa.local é perguntado ao DNS público do Google
+    forwarders { 8.8.8.8; };
+
+    dnssec-validation auto;
+};

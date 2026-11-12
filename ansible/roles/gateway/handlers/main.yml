@@ -1,0 +1,10 @@
+# Handlers: so rodam se a tarefa que os chamou mudou algo
+- name: Reiniciar dhcp
+  ansible.builtin.service:
+    name: isc-dhcp-server
+    state: restarted
+
+- name: Reiniciar bind
+  ansible.builtin.service:
+    name: bind9
+    state: restarted
