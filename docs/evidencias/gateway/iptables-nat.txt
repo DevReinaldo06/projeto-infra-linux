@@ -1,0 +1,13 @@
+Chain PREROUTING (policy ACCEPT 55 packets, 4228 bytes)
+ pkts bytes target     prot opt in     out     source               destination         
+
+Chain INPUT (policy ACCEPT 52 packets, 3504 bytes)
+ pkts bytes target     prot opt in     out     source               destination         
+
+Chain OUTPUT (policy ACCEPT 67 packets, 4702 bytes)
+ pkts bytes target     prot opt in     out     source               destination         
+
+Chain POSTROUTING (policy ACCEPT 35 packets, 2485 bytes)
+ pkts bytes target     prot opt in     out     source               destination         
+   32  2217 MASQUERADE  0    --  *      enp0s3  0.0.0.0/0            0.0.0.0/0           
+    0     0 MASQUERADE  0    --  *      enp0s3  0.0.0.0/0            0.0.0.0/0            /* R8_R9_masq */
