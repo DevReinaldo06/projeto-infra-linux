@@ -1,0 +1,49 @@
+-P INPUT DROP
+-P FORWARD DROP
+-P OUTPUT ACCEPT
+-N PROVISION
+-A INPUT -i lo -j ACCEPT
+-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -m comment --comment R0_input_est -j ACCEPT
+-A INPUT -s 10.0.2.50/32 -i enp0s9 -p tcp -m tcp --dport 22 -m comment --comment R4_ssh_fw -j ACCEPT
+-A INPUT -s 10.0.1.0/24 -i enp0s8 -p udp -m udp --dport 53 -m comment --comment R7_dns_dmz_udp -j ACCEPT
+-A INPUT -s 10.0.1.0/24 -i enp0s8 -p tcp -m tcp --dport 53 -m comment --comment R7_dns_dmz_tcp -j ACCEPT
+-A INPUT -s 10.0.2.0/24 -i enp0s9 -p udp -m udp --dport 53 -m comment --comment R7_dns_lan_udp -j ACCEPT
+-A INPUT -s 10.0.2.0/24 -i enp0s9 -p tcp -m tcp --dport 53 -m comment --comment R7_dns_lan_tcp -j ACCEPT
+-A INPUT -s 10.0.3.0/24 -i enp0s10 -p udp -m udp --dport 53 -m comment --comment R7_dns_db_udp -j ACCEPT
+-A INPUT -s 10.0.3.0/24 -i enp0s10 -p tcp -m tcp --dport 53 -m comment --comment R7_dns_db_tcp -j ACCEPT
+-A INPUT -i enp0s9 -p udp -m udp --sport 68 --dport 67 -m comment --comment R7_dhcp -j ACCEPT
+-A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -m comment --comment R0_fwd_est -j ACCEPT
+-A FORWARD -d 10.0.1.10/32 -i enp0s3 -o enp0s8 -p tcp -m multiport --dports 80,443 -m comment --comment R1_fwd_web -j ACCEPT
+-A FORWARD -s 10.0.2.50/32 -i enp0s9 -p tcp -m tcp --dport 22 -m comment --comment R4_fwd_ssh -j ACCEPT
+-A FORWARD -s 10.0.1.10/32 -d 10.0.3.10/32 -i enp0s8 -o enp0s10 -p tcp -m tcp --dport 5432 -m comment --comment R2_web_db -j ACCEPT
+-A FORWARD -s 10.0.3.10/32 -d 10.0.2.10/32 -i enp0s10 -o enp0s9 -p tcp -m tcp --dport 445 -m comment --comment R6_db_file -j ACCEPT
+-A FORWARD -i enp0s8 -o enp0s10 -m limit --limit 5/min -j LOG --log-prefix "R5-DB-DROP: "
+-A FORWARD -i enp0s8 -o enp0s10 -m comment --comment R5_dmz_db_drop -j DROP
+-A FORWARD -i enp0s3 -o enp0s10 -m limit --limit 5/min -j LOG --log-prefix "R5-DB-DROP: "
+-A FORWARD -i enp0s3 -o enp0s10 -m comment --comment R5_wan_db_drop -j DROP
+-A FORWARD -i enp0s8 -o enp0s3 -j PROVISION
+-A FORWARD -i enp0s10 -o enp0s3 -j PROVISION
+-A FORWARD -i enp0s9 -o enp0s3 -p tcp -m multiport --dports 80,443,53 -m comment --comment R9_lan_net_tcp -j ACCEPT
+-A FORWARD -i enp0s9 -o enp0s3 -p udp -m udp --dport 53 -m comment --comment R9_lan_net_udp -j ACCEPT
+-P PREROUTING ACCEPT
+-P INPUT ACCEPT
+-P OUTPUT ACCEPT
+-P POSTROUTING ACCEPT
+-A PREROUTING -i enp0s3 -p tcp -m tcp --dport 80 -m comment --comment R1_dnat_80 -j DNAT --to-destination 10.0.1.10:80
+-A PREROUTING -i enp0s3 -p tcp -m tcp --dport 443 -m comment --comment R1_dnat_443 -j DNAT --to-destination 10.0.1.10:443
+-A POSTROUTING -o enp0s3 -m comment --comment R8_R9_masq -j MASQUERADE
+Chain FORWARD (policy DROP 2 packets, 168 bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+1        5   268 ACCEPT     0    --  *      *       0.0.0.0/0            0.0.0.0/0            ctstate RELATED,ESTABLISHED /* R0_fwd_est */
+2        0     0 ACCEPT     6    --  enp0s3 enp0s8  0.0.0.0/0            10.0.1.10            multiport dports 80,443 /* R1_fwd_web */
+3        0     0 ACCEPT     6    --  enp0s9 *       10.0.2.50            0.0.0.0/0            tcp dpt:22 /* R4_fwd_ssh */
+4        0     0 ACCEPT     6    --  enp0s8 enp0s10  10.0.1.10            10.0.3.10            tcp dpt:5432 /* R2_web_db */
+5        0     0 ACCEPT     6    --  enp0s10 enp0s9  10.0.3.10            10.0.2.10            tcp dpt:445 /* R6_db_file */
+6        0     0 LOG        0    --  enp0s8 enp0s10  0.0.0.0/0            0.0.0.0/0            limit: avg 5/min burst 5 LOG flags 0 level 4 prefix "R5-DB-DROP: "
+7        0     0 DROP       0    --  enp0s8 enp0s10  0.0.0.0/0            0.0.0.0/0            /* R5_dmz_db_drop */
+8        0     0 LOG        0    --  enp0s3 enp0s10  0.0.0.0/0            0.0.0.0/0            limit: avg 5/min burst 5 LOG flags 0 level 4 prefix "R5-DB-DROP: "
+9        0     0 DROP       0    --  enp0s3 enp0s10  0.0.0.0/0            0.0.0.0/0            /* R5_wan_db_drop */
+10       0     0 PROVISION  0    --  enp0s8 enp0s3  0.0.0.0/0            0.0.0.0/0           
+11       0     0 PROVISION  0    --  enp0s10 enp0s3  0.0.0.0/0            0.0.0.0/0           
+12       1    60 ACCEPT     6    --  enp0s9 enp0s3  0.0.0.0/0            0.0.0.0/0            multiport dports 80,443,53 /* R9_lan_net_tcp */
+13       0     0 ACCEPT     17   --  enp0s9 enp0s3  0.0.0.0/0            0.0.0.0/0            udp dpt:53 /* R9_lan_net_udp */
