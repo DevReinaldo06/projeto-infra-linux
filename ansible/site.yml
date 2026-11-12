@@ -1,5 +1,28 @@
 # Playbook principal: chama as roles na ordem certa (firewall por ultimo)
-# Por enquanto so o gateway; as demais roles entram quando ficarem prontas.
+# Uso (a partir do admin-lan):
+#   ansible-playbook site.yml --check --ask-vault-pass   # simulacao
+#   ansible-playbook site.yml --ask-vault-pass           # aplica
+
+- hosts: all
+  become: true
+  roles: [common]
+
 - hosts: gateway
   become: true
   roles: [gateway]
+
+- hosts: fileserver
+  become: true
+  roles: [fileserver]
+
+- hosts: database
+  become: true
+  roles: [database]
+
+- hosts: web
+  become: true
+  roles: [web]
+
+- hosts: all
+  become: true
+  roles: [firewall]
