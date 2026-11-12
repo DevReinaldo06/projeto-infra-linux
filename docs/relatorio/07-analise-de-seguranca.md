@@ -57,12 +57,13 @@
   2. Em máquina sem regras, o backup saía vazio e restaurá-lo não reabria o acesso. O script passou a gravar um backup padrão com políticas em ACCEPT.
   Lição: a proteção real é o desfazer automático com um backup válido, não a validação prévia.
 - **R9 e NAT com DROP ligado:** `nc -zv -w3 8.8.8.8 443` da admin-lan, via fw-gw, retornou `succeeded`. Prova R9, MASQUERADE e R0. Evidência em `docs/evidencias/firewall/r9-nat-com-drop-*.txt`.
+- **Janela R8 (mecanismo):** `fw-provisioning.sh on/status/off` cria e remove as regras ACCEPT na chain PROVISION, e o fechamento automático (`on 1`) esvaziou a chain sozinho. Evidência em `docs/evidencias/firewall/r8-*.txt`. O tráfego real do web-dmz e do db-zone fica para a integração.
 - **Revisão do iptables.rules:** o jump da R8 estava na interface errada (LAN em vez de DMZ), corrigido no commit `b0fe4d3` e confirmado na revisão do grupo.
 
 **Não provado (pendente):**
+- Janela R8 com tráfego real do web-dmz e do db-zone (só o mecanismo foi provado).
 - Execução completa do `matrix.sh` com todas as VMs no ar.
 - Contador da R5 subindo com tráfego real da DMZ para o banco.
-- Janela R8 (`fw-provisioning.sh`) testada no fw-gw.
 - Firewall de host aplicado em web, db e file.
 - Roles Ansible executadas contra VMs reais.
 

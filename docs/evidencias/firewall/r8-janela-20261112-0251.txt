@@ -1,0 +1,8 @@
+# Teste do mecanismo da janela R8 (copia de teste do fw-gw)
+# Comando: fw-provisioning.sh on 2, depois status
+Chain PROVISION (2 references)
+num   pkts bytes target     prot opt in     out     source               destination         
+1        0     0 ACCEPT     6    --  *      enp0s3  10.0.1.10            0.0.0.0/0            multiport dports 80,443,53 /* R8 */
+2        0     0 ACCEPT     17   --  *      enp0s3  10.0.1.10            0.0.0.0/0            udp dpt:53 /* R8 */
+3        0     0 ACCEPT     6    --  *      enp0s3  10.0.3.10            0.0.0.0/0            multiport dports 80,443,53 /* R8 */
+4        0     0 ACCEPT     17   --  *      enp0s3  10.0.3.10            0.0.0.0/0            udp dpt:53 /* R8 */

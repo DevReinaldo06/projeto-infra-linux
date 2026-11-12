@@ -1,0 +1,5 @@
+# Fechamento automatico da janela R8: 'on 1' e nenhum 'off' manual
+# Status apos mais de 1 minuto: chain PROVISION vazia
+Chain PROVISION (2 references)
+num   pkts bytes target     prot opt in     out     source               destination
+Thu Nov 12 06:08:03 AM UTC 2026
