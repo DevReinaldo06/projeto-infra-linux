@@ -1,0 +1,21 @@
+== ip -br a
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+enp0s3           UP             192.168.15.15/24 metric 100 2804:1b0:f413:ea1c:a00:27ff:fe5f:b275/64 fe80::a00:27ff:fe5f:b275/64 
+enp0s8           UP             10.0.1.1/24 fe80::a00:27ff:febd:87ad/64 
+enp0s9           UP             10.0.2.1/24 fe80::a00:27ff:feb5:cd49/64 
+enp0s10          UP             10.0.3.1/24 fe80::a00:27ff:fec7:cb33/64 
+== ip route
+default via 192.168.15.1 dev enp0s3 proto dhcp src 192.168.15.15 metric 100 
+10.0.1.0/24 dev enp0s8 proto kernel scope link src 10.0.1.1 
+10.0.2.0/24 dev enp0s9 proto kernel scope link src 10.0.2.1 
+10.0.3.0/24 dev enp0s10 proto kernel scope link src 10.0.3.1 
+192.168.15.0/24 dev enp0s3 proto kernel scope link src 192.168.15.15 metric 100 
+192.168.15.1 dev enp0s3 proto dhcp scope link src 192.168.15.15 metric 100 
+== ip_forward
+net.ipv4.ip_forward = 1
+== dig web
+10.0.1.10
+== dig db
+10.0.3.10
+== dig reverso
+db.empresa.local.
