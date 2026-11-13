@@ -6,3 +6,6 @@ rede_db: 10.0.3.0/24
 gw_dmz: 10.0.1.1
 gw_lan: 10.0.2.1
 gw_db: 10.0.3.1
+
+# Senhas do banco: o dicionario vault_db_senhas esta cifrado em vault_db.yml (dono: Elton)
+database_role_passwords: "{{ vault_db_senhas }}"
