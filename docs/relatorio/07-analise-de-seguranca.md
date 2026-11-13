@@ -59,6 +59,7 @@
 - **R9 e NAT com DROP ligado:** `nc -zv -w3 8.8.8.8 443` da admin-lan, via fw-gw, retornou `succeeded`. Prova R9, MASQUERADE e R0. Evidência em `docs/evidencias/firewall/r9-nat-com-drop-*.txt`.
 - **Janela R8 (mecanismo):** `fw-provisioning.sh on/status/off` cria e remove as regras ACCEPT na chain PROVISION, e o fechamento automático (`on 1`) esvaziou a chain sozinho. Evidência em `docs/evidencias/firewall/r8-*.txt`. O tráfego real do web-dmz e do db-zone fica para a integração.
 - **matrix.sh (parcial, com DROP ligado):** com fw-gw e db-zone no ar, passaram R4 (SSH da admin-lan no fw-gw e no db-zone), R7 (DNS da DB no gateway) e o bloqueio db-zone → SSH no fw-gw. Os demais casos falharam por infraestrutura (web-dmz e file-lan ausentes), não por regra. Evidência em `docs/evidencias/firewall/matrix-parcial-*.txt`.
+- **Roles Ansible `common` e `firewall` (idempotência):** `common` no db-zone (1ª `changed=5`, 2ª `changed=0`) e `firewall` no fw-gw (1ª `changed=4`, 2ª `changed=0`), ambas com `failed=0`. Evidência em `docs/evidencias/ansible/`. Executadas em cópias das VMs no ambiente do autor.
 - **Revisão do iptables.rules:** o jump da R8 estava na interface errada (LAN em vez de DMZ), corrigido no commit `b0fe4d3` e confirmado na revisão do grupo.
 
 **Não provado (pendente):**
@@ -66,7 +67,7 @@
 - Execução completa do matrix.sh com web-dmz e file-lan no ar (R2, R3, R5, R6, R9 e bloqueios da DMZ).
 - Contador da R5 subindo com tráfego real da DMZ para o banco.
 - Firewall de host aplicado em web, db e file.
-- Roles Ansible executadas contra VMs reais.
+- Roles Ansible executadas nas VMs da integração (PC do Reinaldo) e nas bases limpas.
 
 ## 7.6 Riscos residuais e limitações
 
