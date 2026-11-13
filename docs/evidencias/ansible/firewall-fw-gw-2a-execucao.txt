@@ -1,0 +1,18 @@
+
+PLAY [all] *********************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [fw-gw]
+
+TASK [firewall : Instalar iptables-persistent] *********************************
+ok: [fw-gw]
+
+TASK [firewall : Copiar o iptables.rules do gateway] ***************************
+ok: [fw-gw]
+
+TASK [firewall : Gerar o firewall de host a partir do modelo] ******************
+skipping: [fw-gw]
+
+PLAY RECAP *********************************************************************
+fw-gw                      : ok=3    changed=0    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
+
