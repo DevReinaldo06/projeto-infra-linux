@@ -1,0 +1,49 @@
+
+PLAY [Gateway (rede, roteamento, NAT, DHCP e DNS)] *****************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [fw-gw]
+
+TASK [gateway : Instalar pacotes do gateway] ***********************************
+ok: [fw-gw]
+
+TASK [gateway : Ligar o encaminhamento de pacotes] *****************************
+ok: [fw-gw]
+
+TASK [gateway : NAT - mascarar a saida pela WAN (mesma regra R8_R9_masq do firewall)] ***
+ok: [fw-gw]
+
+TASK [gateway : Copiar o netplan do gateway] ***********************************
+ok: [fw-gw]
+
+TASK [gateway : Definir a interface do DHCP] ***********************************
+ok: [fw-gw]
+
+TASK [gateway : Copiar o dhcpd.conf validando a sintaxe antes] *****************
+ok: [fw-gw]
+
+TASK [gateway : Copiar as opcoes do Bind9] *************************************
+ok: [fw-gw]
+
+TASK [gateway : Copiar a lista de zonas do Bind9] ******************************
+ok: [fw-gw]
+
+TASK [gateway : Criar a pasta das zonas] ***************************************
+ok: [fw-gw]
+
+TASK [gateway : Copiar os arquivos de zona] ************************************
+ok: [fw-gw] => (item=db.empresa.local)
+ok: [fw-gw] => (item=db.10.0.1)
+ok: [fw-gw] => (item=db.10.0.2)
+ok: [fw-gw] => (item=db.10.0.3)
+
+TASK [gateway : Validar a configuracao completa do Bind9 (inclui as zonas)] ****
+ok: [fw-gw]
+
+TASK [gateway : Garantir DHCP e DNS ligados e iniciando no boot] ***************
+ok: [fw-gw] => (item=isc-dhcp-server)
+ok: [fw-gw] => (item=bind9)
+
+PLAY RECAP *********************************************************************
+fw-gw                      : ok=13   changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
