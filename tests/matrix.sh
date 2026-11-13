@@ -17,7 +17,7 @@ set -u
 
 # ---------- CONFIGURACAO ----------
 SSH_USER=sysadmin
-IFACE_WEB="PREENCHER"        # nome da placa da DMZ no web-dmz (pergunte ao Guilherme)
+IFACE_WEB="enp0s3"
 DOMINIO=empresa.local
 
 IP_WEB=10.0.1.10
