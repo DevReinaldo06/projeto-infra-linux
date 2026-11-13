@@ -1,0 +1,30 @@
+
+PLAY [all] *********************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [db-zone]
+
+TASK [common : Instalar pacotes basicos] ***************************************
+changed: [db-zone]
+
+TASK [common : Garantir o usuario sysadmin] ************************************
+ok: [db-zone]
+
+TASK [common : Autorizar a chave publica do admin-lan] *************************
+ok: [db-zone]
+
+TASK [common : Sudo sem senha para o sysadmin (validando com visudo)] **********
+changed: [db-zone]
+
+TASK [common : Copiar o hardening do SSH] **************************************
+changed: [db-zone]
+
+RUNNING HANDLER [common : Validar e recarregar ssh] ****************************
+changed: [db-zone]
+
+RUNNING HANDLER [common : Recarregar ssh] **************************************
+changed: [db-zone]
+
+PLAY RECAP *********************************************************************
+db-zone                    : ok=8    changed=5    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
