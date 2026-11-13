@@ -1,0 +1,10 @@
+$ dig @10.0.2.1 db.empresa.local +short
+10.0.3.10
+$ dig @10.0.2.1 web.empresa.local +short
+10.0.1.10
+$ dig @10.0.2.1 arquivos.empresa.local +short
+10.0.2.10
+$ dig @10.0.2.1 admin.empresa.local +short
+10.0.2.50
+$ dig @10.0.2.1 -x 10.0.3.10 +short
+db.empresa.local.
