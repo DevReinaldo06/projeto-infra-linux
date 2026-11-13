@@ -51,7 +51,6 @@
 - **Política DROP:** aplicada em INPUT e FORWARD. O SSH da admin-lan (R4) continuou funcionando. Evidência em `docs/evidencias/firewall/iptables-drop-*.txt`.
 - **Contadores da R5:** regras LOG e DROP da R5 carregadas e zeradas, prontas para contar.
 - **Modelo de firewall de host:** renderizado para web, db e file e validado com `iptables-restore --test`.
-- **Roles Ansible `common` e `firewall`:** escritas, com `--syntax-check` e renderização do template validados (commit `a9f972f`). Não foram executadas contra uma VM real.
 - **fw-apply.sh (rede de segurança):** os testes revelaram dois defeitos, corrigidos:
   1. Neste sistema (iptables 1.8.10, nf_tables) o `--test` valida só a sintaxe e não detecta chain inexistente. O script passou a cancelar o temporizador de desfazer se a aplicação falhar.
   2. Em máquina sem regras, o backup saía vazio e restaurá-lo não reabria o acesso. O script passou a gravar um backup padrão com políticas em ACCEPT.
