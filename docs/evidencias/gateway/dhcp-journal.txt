@@ -1,0 +1,20 @@
+Nov 12 06:59:22 fw-gw dhcpd[803]: For info, please visit https://www.isc.org/software/dhcp/
+Nov 12 06:59:22 fw-gw dhcpd[803]: Config file: /etc/dhcp/dhcpd.conf
+Nov 12 06:59:22 fw-gw sh[803]: Config file: /etc/dhcp/dhcpd.conf
+Nov 12 06:59:22 fw-gw sh[803]: Database file: /var/lib/dhcp/dhcpd.leases
+Nov 12 06:59:22 fw-gw sh[803]: PID file: /run/dhcp-server/dhcpd.pid
+Nov 12 06:59:22 fw-gw dhcpd[803]: Database file: /var/lib/dhcp/dhcpd.leases
+Nov 12 06:59:22 fw-gw dhcpd[803]: PID file: /run/dhcp-server/dhcpd.pid
+Nov 12 06:59:22 fw-gw dhcpd[803]: Wrote 0 deleted host decls to leases file.
+Nov 12 06:59:22 fw-gw sh[803]: Wrote 0 deleted host decls to leases file.
+Nov 12 06:59:22 fw-gw sh[803]: Wrote 0 new dynamic host decls to leases file.
+Nov 12 06:59:22 fw-gw sh[803]: Wrote 1 leases to leases file.
+Nov 12 06:59:22 fw-gw dhcpd[803]: Wrote 0 new dynamic host decls to leases file.
+Nov 12 06:59:22 fw-gw dhcpd[803]: Wrote 1 leases to leases file.
+Nov 12 06:59:22 fw-gw dhcpd[803]: Listening on LPF/enp0s9/08:00:27:b5:cd:49/10.0.2.0/24
+Nov 12 06:59:22 fw-gw sh[803]: Listening on LPF/enp0s9/08:00:27:b5:cd:49/10.0.2.0/24
+Nov 12 06:59:22 fw-gw sh[803]: Sending on   LPF/enp0s9/08:00:27:b5:cd:49/10.0.2.0/24
+Nov 12 06:59:22 fw-gw sh[803]: Sending on   Socket/fallback/fallback-net
+Nov 12 06:59:22 fw-gw dhcpd[803]: Sending on   LPF/enp0s9/08:00:27:b5:cd:49/10.0.2.0/24
+Nov 12 06:59:22 fw-gw dhcpd[803]: Sending on   Socket/fallback/fallback-net
+Nov 12 06:59:22 fw-gw dhcpd[803]: Server starting service.

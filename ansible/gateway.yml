@@ -1,0 +1,6 @@
+# Aplica so a role gateway (uso: ansible-playbook gateway.yml)
+# Para testes no proprio fw-gw: ansible-playbook -i inventory/local.ini gateway.yml --ask-become-pass
+- name: Gateway (rede, roteamento, NAT, DHCP e DNS)
+  hosts: gateway
+  become: true
+  roles: [gateway]
